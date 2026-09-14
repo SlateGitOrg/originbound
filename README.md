@@ -2,6 +2,22 @@
 
 > A contained lab showing the same relay succeeding against TOTP and failing against WebAuthn - with the protocol field that causes it.
 
+## Live deployment
+
+[![CI and deployment](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml)
+
+[Open the interactive Origin Bound demo](https://slategitorg.github.io/originbound/)
+
+The deployed interface uses a deterministic offline scenario to make the repository's tested decision rule visible without external services or private data.
+
+### Desktop
+
+![Origin Bound desktop deployment](docs/assets/deployed-desktop.png)
+
+### Mobile
+
+<img src="docs/assets/deployed-mobile.png" alt="Origin Bound mobile deployment" width="390">
+
 `COMPACT` · **Cybersecurity** · Advanced · ~5-6 days · Healthcare - clinician remote access
 
 **Primary language:** TypeScript
