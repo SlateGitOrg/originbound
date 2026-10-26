@@ -43,7 +43,7 @@ Prerequisites: Node 22.18 or newer (24 recommended). TypeScript runs through Nod
 git clone https://github.com/SlateGitOrg/originbound.git
 cd originbound
 npm run demo   # side-by-side relay comparison
-npm test       # 20 tests in tests/ plus the site logic tests
+npm test       # 20 tests (18 in tests/, 2 for the site logic)
 ```
 
 ## Example
