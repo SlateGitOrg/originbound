@@ -4,9 +4,9 @@ import { createHmac, randomBytes, createHash } from 'node:crypto';
  * A sealed lab that demonstrates why WebAuthn is phishing-resistant and TOTP
  * is not.
  *
- * THE DIFFERENTIATOR LIVES HERE.
+ * The origin check that decides the outcome lives in this file.
  *
- * Every WebAuthn demo shows a passkey working. Almost none shows WHY it is
+ * Most WebAuthn demos show a passkey working. Few show WHY it is
  * different from the MFA the organisation already has, and that difference is
  * the only part worth knowing: a relayed TOTP code is indistinguishable from a
  * legitimate one, because the code is a function of (shared secret, time) and

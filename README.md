@@ -1,144 +1,106 @@
 # originbound
 
-> A contained lab showing the same relay succeeding against TOTP and failing against WebAuthn - with the protocol field that causes it.
+A contained lab that runs the same real-time relay against TOTP and WebAuthn, shows it succeed against one and fail against the other, and names the protocol field that makes the difference.
 
-## Live deployment
+[![CI and Pages](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml)
+[Live demo](https://slategitorg.github.io/originbound/)
 
-[![CI and deployment](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SlateGitOrg/originbound/actions/workflows/ci.yml)
+![originbound browser lab, desktop](docs/assets/deployed-desktop.png)
 
-[Open the working Origin Bound application](https://slategitorg.github.io/originbound/)
+## Why
 
-This deployed application runs the project's decision workflow in the browser. Change the inputs, run the analysis, and inspect the computed metrics and decision trace.
+Teams roll out MFA and are still phished: a TOTP code or push approval is valid wherever it is presented, so an attacker-in-the-middle can forward it to the real site in real time. WebAuthn is phishing-resistant for a specific reason: the signed assertion includes `clientDataJSON.origin`, the origin the browser was actually on. Most demos show a passkey working and never show why that differs from the MFA you already have. This repo shows it, side by side, with a control run to prove the verifier is not simply rejecting everything.
 
-### Desktop
+## Features
 
-![Origin Bound desktop deployment](docs/assets/deployed-desktop.png)
+- Two relying parties (TOTP, WebAuthn) and a virtual authenticator, all in-process.
+- A relay run against each factor, producing a step-by-step trace and the deciding field.
+- A control ceremony with no relay, so "rejected" is meaningful.
+- Origin matching that treats `bank.example.evil` as a different site from `bank.example`.
+- Challenge single-use, signature tampering and signature-counter (cloned authenticator) checks.
+- A browser lab (`site/`) for exploring method, origin and rpId, deployed to GitHub Pages.
 
-### Mobile
+## Architecture
 
-<img src="docs/assets/deployed-mobile.png" alt="Origin Bound mobile deployment" width="390">
-
-`COMPACT` · **Cybersecurity** · Advanced · ~5-6 days · Healthcare - clinician remote access
-
-**Primary language:** TypeScript
-**Tags:** `webauthn`, `passkeys`, `mfa`, `phishing-resistance`, `authentication`
-
----
-
-## The problem
-
-Organisations roll out MFA and are still phished, because TOTP codes and push approvals can be relayed by an attacker-in-the-middle in real time. The distinction between 'MFA' and 'phishing-resistant MFA' is the entire game, and most engineers - including most people rolling out MFA - cannot articulate what makes the difference.
-
-## ⭐ The differentiator
-
-Demonstrates **origin binding defeating a relay** in a sealed lab: the same relay setup succeeds against TOTP and fails against WebAuthn, with the exact protocol field responsible (`clientDataJSON.origin`, bound into the signature) shown in the trace. A generic WebAuthn demo shows a passkey working and never shows *why* it is different, which is the only part worth knowing.
-
-This is the sentence to lead with when someone asks you to walk through the
-project. Everything else in this repo exists to make it true and to prove it.
-
-## Data
-
-Self-contained lab. SoftWebAuthn provides a virtual authenticator; local DNS and all traffic stay inside the Docker Compose network. No third party is involved at any point.
-
-> No paid API key is required to run or demo this project. Where a paid
-> service would add value it is wired as an optional enhancement behind an
-> interface with an offline mock as the default implementation.
-
-## Stack
-
-- TypeScript, SimpleWebAuthn
-- Node + Docker Compose (sealed network, local DNS)
-- Playwright for the ceremony traces
-
-## Core capabilities
-
-- Full registration and authentication ceremonies with attestation verification
-- Contained comparison harness: relay attempt against TOTP, then against WebAuthn
-- Credential lifecycle - multiple authenticators, revocation, and a documented recovery design
-- Signature counter monitoring for cloned-authenticator detection
-- Annotated protocol trace highlighting the field that defeats the relay
-
-## Repository layout
-
-```
-src/server/
-src/client/
-lab/                      # sealed compose network + local DNS
-docs/
-test/
+```mermaid
+flowchart LR
+  V["victim<br/>(TOTP app / VirtualAuthenticator)"] --> R["relay<br/>(src/relay.ts)"]
+  R -->|"TOTP code"| TP["TotpRelyingParty"]
+  R -->|"assertion"| WP["WebAuthnRelyingParty"]
+  TP --> T["annotated trace"]
+  WP --> T
+  T --> D["demo CLI"]
+  T --> Te["tests"]
 ```
 
-## Build plan
+`src/lab.ts` defines the authenticators and relying parties, `src/relay.ts` runs the attack against each and returns a `RelayOutcome`, and `src/demo.ts` prints the comparison. Nothing touches a network; the "relay" is a function that passes values between objects. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-1. Working WebAuthn ceremony first.
-2. Then TOTP, then the relay harness inside the sealed network - relay the TOTP and watch it succeed.
-3. Point the same relay at WebAuthn and capture the rejection with its trace. That trace is the deliverable.
-4. Recovery design last, and write it up honestly - recovery is where most passkey deployments reintroduce phishability.
+## Quick start
 
-## Testing strategy
-
-Assert the relay **succeeds** against TOTP and **fails** against WebAuthn with the specific origin-mismatch error. Assert cloned-authenticator detection fires on a replayed signature counter. The TOTP half of that first assertion is what gives the WebAuthn half its meaning.
-
-Tests assert **correctness**, not merely that the code runs. A green suite on
-this repo is a claim about behaviour under adversarial conditions; treat any
-test that would pass against a deliberately broken implementation as a bug in
-the test.
-
-## Quality & safety layer
-
-Everything runs inside a sealed Docker network against a virtual authenticator you control. The relay component has no capability outside the lab and the README states this explicitly. This is a defensive demonstration of a control, not an attack tool.
-
-## Measurable outcome
-
-> A side-by-side trace showing a credential relay succeeding against TOTP and being rejected by WebAuthn, with the origin field that causes the rejection highlighted.
-
-State it in these terms — business units, not technical ones — in your CV
-bullet and in the first thirty seconds of describing the project.
-
-## Interview questions this project answers
-
-- **Why is TOTP phishable and WebAuthn not?**
-- **What exactly is signed in a WebAuthn assertion?**
-- **How do you handle account recovery without reintroducing phishability?**
-
-## What this deliberately is *not*
-
-- Not an attack tool. The relay exists only inside the sealed lab, against your own virtual authenticator.
-
-
-## Run it now
+Prerequisites: Node 22.18 or newer (24 recommended). TypeScript runs through Node's built-in type stripping, so there is no build step and no `npm install`.
 
 ```bash
-npm test        # runs the suite; no install step needed
-npm run demo    # the 60-second artefact
-```
-
-Requires Node 22.6+ (24 recommended). TypeScript runs natively via
-type stripping - there is no build step and no `node_modules`.
-
-## Getting started
-
-```bash
-git clone <your-fork-url> originbound
+git clone https://github.com/SlateGitOrg/originbound.git
 cd originbound
-docker compose up -d          # sealed network + local DNS
-npm install
-npm run demo:totp             # relay succeeds
-npm run demo:webauthn         # relay rejected - read the trace
+npm run demo   # side-by-side relay comparison
+npm test       # 20 tests in tests/ plus the site logic tests
+```
+
+## Example
+
+`npm run demo` (trimmed; credential ids and challenges are random):
+
+```text
+ATTACK 1 - relay a TOTP code
+    victim believes they are on https://bank.example.evil
+    attacker forwards 595517 to https://bank.example
+    https://bank.example ACCEPTS - the code is valid, and it carries no information about where it was typed
+    RESULT: relay SUCCEEDED - the attacker is now logged in as the victim.
+
+ATTACK 2 - the identical relay, against WebAuthn
+    attacker relays that challenge to the victim on https://bank.example.evil
+    the authenticator REFUSES to sign: the origin does not match the credential's rpId
+    RESULT: relay FAILED (ORIGIN_MISMATCH)
+    deciding field: clientDataJSON.origin (authenticator refused to sign)
+
+CONTROL - the same WebAuthn ceremony with no relay
+    RESULT: ACCEPTED - the control is not simply refusing everything.
+```
+
+## How it works
+
+- **TOTP** derives a code from `(shared secret, time step)` with HMAC-SHA1 and dynamic truncation. `verify` has no parameter for an origin because the code does not commit to one. Replay protection stops reuse but not a relay, since the attacker submits first.
+- **WebAuthn** assertions sign the authenticator data plus a hash of `clientDataJSON`, which carries the origin supplied by the browser. The relying party checks, in order: known credential, `origin` equals the expected origin, `rpIdHash`, single-use challenge, signature, then that the signature counter advanced.
+- **Origin matching** is an exact host match or a true subdomain (`host === rpId || host.endsWith("." + rpId)`), https only. A bare `endsWith(rpId)` would accept `bank.example.evil`; a test pins that bug.
+- The virtual authenticator signs with HMAC, so the relying party stores the same key material. A real deployment stores a public key; the origin check is unaffected.
+
+## Testing
+
+```bash
 npm test
 ```
 
-Docker is supported but optional — every path above works on a plain
-Windows/macOS/Linux laptop without a cloud account.
+`tests/relay.test.ts` asserts that the relay succeeds against TOTP and fails with `ORIGIN_MISMATCH` against WebAuthn, that the control ceremony is accepted, that editing the origin after signing breaks the signature, that challenges cannot be replayed, that a rewound signature counter is flagged as `CLONED_AUTHENTICATOR`, and the origin-matching edge cases (lookalike domain, http, malformed input). `site/core.test.mjs` covers the browser lab's decision logic. CI runs both on Node 24.
 
-## Definition of done
+## Project layout
 
-- [ ] The differentiator above is implemented, and a test proves it
-- [ ] The measurable outcome is produced by a command anyone can run
-- [ ] `README` explains the one decision a generic version gets wrong
-- [ ] CI runs the full suite on every push and is green on `main`
-- [ ] A recruiter can see the headline artefact in under 60 seconds
+```text
+src/lab.ts        authenticators, relying parties, origin matching
+src/relay.ts      the relay and the protocol comparison
+src/demo.ts       CLI output
+tests/            relay and origin-binding tests
+site/             static browser lab (deployed to GitHub Pages)
+scripts/          site validation used by CI
+docs/             architecture notes and screenshots
+```
 
-## Licence
+## Limitations
+
+- A model, not a WebAuthn implementation: no CBOR/COSE parsing, attestation verification or browser APIs, and signatures are HMAC rather than public-key.
+- The browser lab models the origin-matching rule only; it does not run the full ceremony.
+- No account recovery flow is implemented.
+- Not an attack tool: the relay exists only inside the process, against a virtual authenticator.
+
+## License
 
 MIT — see [LICENSE](LICENSE).
